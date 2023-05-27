@@ -21,6 +21,8 @@ class Network(nn.Module):
         self.fc3 = nn.Linear(hidden_out_dim,output_dim)
         # self.nonlin = f.relu #leaky_relu
         self.nonlin = f.leaky_relu #leaky_relu
+        self.softmax = nn.Softmax(dim=-1)
+        self.sigmoid = nn.Sigmoid()
         self.actor = actor
         #self.reset_parameters()
 
@@ -34,13 +36,17 @@ class Network(nn.Module):
             # return a vector of the force
             h1 = self.nonlin(self.fc1(x))
 
-            h2 = self.nonlin(self.fc2(h1))
-            h3 = (self.fc3(h2))
+            h2 = self.nonlin(self.fc2(h1))  
+            h3 = self.fc3(h2)
             norm = torch.norm(h3)
             
             # h3 is a 2D vector (a force that is applied to the agent)
             # we bound the norm of the vector to be between 0 and 10
-            return 10.0*(torch.tanh(norm))*h3/norm if norm > 0 else 10*h3
+            # return (torch.tanh(norm))*h3/norm if norm > 0 else h3
+            # return torch.sigmoid(h3)
+            # return h3
+            # return self.softmax(h3)
+            return self.sigmoid(h3)
         
         else:
             # critic network simply outputs a number

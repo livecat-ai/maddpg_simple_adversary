@@ -11,6 +11,15 @@ from utilities import soft_update, transpose_to_tensor, transpose_list
 device = torch.device("cpu")
 
 
+# HIDDEN_IN_ACTOR = 256
+# HIDDEN_OUT_ACTOR = 128
+# OUT_ACTOR = 5
+
+# # critic input = obs_full + actions = 8+10+10+5+5+5=43
+# IN_CRITIC = 43
+# HIDDEN_IN_CRITIC = 512
+# HIDDEN_OUT_CRITIC = 256
+
 HIDDEN_IN_ACTOR = 256
 HIDDEN_OUT_ACTOR = 128
 OUT_ACTOR = 5

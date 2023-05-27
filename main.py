@@ -43,17 +43,17 @@ def main():
     parallel_envs = 1
     # number of training episodes.
     # change this to higher number to experiment. say 30000.
-    number_of_episodes = 2500
+    number_of_episodes = 2001
     episode_length = 25
-    batchsize = 1024
+    batchsize = 128
     # how many episodes to save policy and gif
     save_interval = 50
     # t = 0
     
     # amplitude of OU noise
     # this slowly decreases to 0
-    noise = 2
-    noise_reduction = 0.999
+    noise = 0.5
+    noise_reduction = 1.0
 
     # how many episodes before update
     episode_per_update = 1
@@ -71,22 +71,14 @@ def main():
     # initialize policy and critic
     maddpg = MADDPG()
     logger = SummaryWriter(log_dir=log_path)
-    agent0_reward = []
-    agent1_reward = []
-    agent2_reward = []
+
+
+    scores = []
 
     # training loop
-    # show progressbar
-    import progressbar as pb
-    widget = ['episode: ', pb.Counter(),'/',str(number_of_episodes),' ', 
-              pb.Percentage(), ' ', pb.ETA(), ' ', pb.Bar(marker=pb.RotatingMarker()), ' ' ]
-    
-    timer = pb.ProgressBar(widgets=widget, maxval=number_of_episodes).start()
-
+ 
     # use keep_awake to keep workspace from disconnecting
     for episode in range(0, number_of_episodes):
-
-        timer.update(episode)
 
         reward_this_episode = np.zeros(3)
         env.reset() #
@@ -104,6 +96,7 @@ def main():
         # save info or not
         save_info = (episode) % save_interval == 0
         frames = []
+        
         tmax = 0
         
         # if save_info:
@@ -115,6 +108,7 @@ def main():
             # action input needs to be transposed
             obs_tensor = [torch.tensor(ob, dtype=torch.float32) for ob in obs]
             actions = maddpg.act(obs_tensor, noise=noise)
+            # actions = maddpg.act(obs, noise=noise)
             actions = [action.clip(0.0, 1.0).detach().numpy() for action in actions]
 
             noise *= noise_reduction
@@ -149,19 +143,20 @@ def main():
         
         if len(buffer) > batchsize and episode % episode_per_update < parallel_envs:
             samples = buffer.sample(batchsize)
-            maddpg.update(samples, a_i, logger)
-            maddpg.update_targets() #soft update the target network towards the actual networks
+            # a_i = 0
+            for a_i in range(num_agents):
+                # samples = buffer.sample(batchsize)
+                maddpg.update(samples, a_i, logger)
+                maddpg.update_targets() #soft update the target network towards the actual networks
 
-        agent0_reward.append(reward_this_episode[0])
-        agent1_reward.append(reward_this_episode[1])
-        agent2_reward.append(reward_this_episode[2])
-
-        if episode % 100 == 0 or episode == number_of_episodes-1:
-            avg_rewards = [np.mean(agent0_reward), np.mean(agent1_reward), np.mean(agent2_reward)]
-            agent0_reward = []
-            agent1_reward = []
-            agent2_reward = []
-            print(np.sum(avg_rewards))
+        # score = reward_this_episode
+        scores.append(reward_this_episode)
+        
+        if (episode % 100 == 0 or episode == number_of_episodes-1) and episode > 0:
+            # avg_rewards = [np.mean(agent0_reward), np.mean(agent1_reward), np.mean(agent2_reward)]
+            avg_rewards = [np.mean(score) for score in zip(*scores)]
+            print("Episode: {}, score: {}".format(episode, np.sum(avg_rewards)))
+            scores = []
             for a_i, avg_rew in enumerate(avg_rewards):
                 logger.add_scalar('agent%i/mean_episode_rewards' % a_i, avg_rew, episode)
 
@@ -185,7 +180,7 @@ def main():
 
     env.close()
     logger.close()
-    timer.finish()
+    # timer.finish()
 
 if __name__=='__main__':
     main()
