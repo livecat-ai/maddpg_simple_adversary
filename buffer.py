@@ -29,13 +29,12 @@ class ReplayBuffer:
            then zip(*item) - (ni, ss, na, is) -> (ni, na, ss, is)
         """
         samples = random.sample(self.deque, batchsize)
-        samples_t = [list(zip(*item)) for item in zip(*samples)]
+        samples_transposed = [list(zip(*item)) for item in zip(*samples)]
         out = []
-        for items in samples_t:
+        for items in samples_transposed:
             out.append([torch.tensor(np.array(item), dtype=torch.float32) for item in items])
         return out
     
-
     def __len__(self):
         return len(self.deque)
 

@@ -33,24 +33,25 @@ class DDPGAgent:
         self.actor_optimizer = Adam(self.actor.parameters(), lr=lr_actor)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr_critic, weight_decay=1.e-5)
 
-    def act(self, obs, noise=0.0):
-        obs = torch.tensor(obs, dtype=torch.float32).to(device)
-        obs = obs.to(device)
-        action = self.actor(obs) + noise*self.noise.noise()
-        return action
+    # def act(self, obs, noise=0.0):
+    #     obs = torch.tensor(obs, dtype=torch.float32).to(device)
+    #     obs = obs.to(device)
+    #     action = self.actor(obs) + noise*self.noise.noise()
+    #     return action
     
-    # def act(self, state, add_noise=True):
-    #     """Returns actions for given state as per current policy."""
-    #     state = torch.from_numpy(state).float().to(device)
-    #     self.actor_local.eval()
-    #     with torch.no_grad():
-    #         action = self.actor_local(state).cpu().data.numpy()
-    #     self.actor_local.train()
-    #     if add_noise:
-    #         action += self.noise.sample()
-    #     return np.clip(action, 0, 1)
+    def act(self, obs, add_noise=True):
+        """Returns actions for given state as per current policy."""
+        obs = torch.from_numpy(obs).float().to(device)
+        self.actor.eval()
+        with torch.no_grad():
+            action = self.actor(obs).cpu().data.numpy()
+        self.actor.train()
+        if add_noise:
+            action += self.noise.noise()
+        return np.clip(action, 0, 1)
 
     def target_act(self, obs, noise=0.0):
         obs = obs.to(device)
-        action = self.target_actor(obs) + noise*self.noise.noise()
+        # obs = torch.from_numpy(obs).float().to(device)
+        action = self.target_actor(obs) + noise*torch.tensor(self.noise.noise(), dtype=torch.float32)
         return action

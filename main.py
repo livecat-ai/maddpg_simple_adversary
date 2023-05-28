@@ -25,27 +25,27 @@ def seeding(seed=1):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def pre_process(entity, batchsize):
-    processed_entity = []
-    for j in range(3):
-        list = []
-        for i in range(batchsize):
-            b = entity[i][j]
-            list.append(b)
-        c = torch.Tensor(list)
-        processed_entity.append(c)
-    return processed_entity
+# def pre_process(entity, batchsize):
+#     processed_entity = []
+#     for j in range(3):
+#         list = []
+#         for i in range(batchsize):
+#             b = entity[i][j]
+#             list.append(b)
+#         c = torch.Tensor(list)
+#         processed_entity.append(c)
+#     return processed_entity
 
 
 def main():
     seeding()
     # number of parallel agents
-    parallel_envs = 1
+    # parallel_envs = 1
     # number of training episodes.
     # change this to higher number to experiment. say 30000.
-    number_of_episodes = 2001
+    number_of_episodes = 1001
     episode_length = 25
-    batchsize = 128
+    batchsize = 256
     # how many episodes to save policy and gif
     save_interval = 50
     # t = 0
@@ -66,7 +66,8 @@ def main():
     env = simple_adversary_v2.env(continuous_actions=True, render_mode='rgb_array', max_cycles=episode_length)
      
     # keep 5000 episodes worth of replay
-    buffer = ReplayBuffer(int(5000*episode_length))
+    buffer_size = int(5000*episode_length)
+    buffer = ReplayBuffer(buffer_size)
     
     # initialize policy and critic
     maddpg = MADDPG()
@@ -85,6 +86,7 @@ def main():
         agents = env.agents
         num_agents = env.num_agents
 
+        # dummy_action = torch.tensor(np.zeros(5,))
         dummy_action = torch.tensor(np.zeros(5,))
         obs = [env.observe(agent) for agent in agents]
        
@@ -106,10 +108,10 @@ def main():
             
             # explore = only explore for a certain number of episodes
             # action input needs to be transposed
-            obs_tensor = [torch.tensor(ob, dtype=torch.float32) for ob in obs]
-            actions = maddpg.act(obs_tensor, noise=noise)
-            # actions = maddpg.act(obs, noise=noise)
-            actions = [action.clip(0.0, 1.0).detach().numpy() for action in actions]
+            # obs_tensor = [torch.tensor(ob, dtype=torch.float32) for ob in obs]
+            # actions = maddpg.act(obs_tensor, noise=noise)
+            actions = maddpg.act(obs, noise=noise)
+            # actions = [action.clip(0.0, 1.0).detach().numpy() for action in actions]
 
             noise *= noise_reduction
             
@@ -141,7 +143,7 @@ def main():
                 frames.append(env.render())
                 tmax+=1
         
-        if len(buffer) > batchsize and episode % episode_per_update < parallel_envs:
+        if len(buffer) > batchsize and episode % episode_per_update == 0:
             samples = buffer.sample(batchsize)
             # a_i = 0
             for a_i in range(num_agents):
@@ -154,9 +156,9 @@ def main():
         
         if (episode % 100 == 0 or episode == number_of_episodes-1) and episode > 0:
             # avg_rewards = [np.mean(agent0_reward), np.mean(agent1_reward), np.mean(agent2_reward)]
-            avg_rewards = [np.mean(score) for score in zip(*scores)]
-            print("Episode: {}, score: {}".format(episode, np.sum(avg_rewards)))
-            scores = []
+            avg_rewards = [np.mean(score) for score in zip(*scores[-100:])]
+            print("Episode: {}, score: {}".format(episode, np.mean(avg_rewards)))
+            # scores = []
             for a_i, avg_rew in enumerate(avg_rewards):
                 logger.add_scalar('agent%i/mean_episode_rewards' % a_i, avg_rew, episode)
 
